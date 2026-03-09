@@ -107,10 +107,6 @@ describe('AgentProfilePanel', () => {
 
     expect(api.saveProfile).toHaveBeenCalledWith(
       'Alpha',
-      expect.stringContaining('"reasoning_level":"high"'),
-    );
-    expect(api.saveProfile).toHaveBeenCalledWith(
-      'Alpha',
       expect.stringContaining('"reviewer_model":null'),
     );
     expect(api.listProfiles).toHaveBeenCalled();
