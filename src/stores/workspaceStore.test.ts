@@ -9,7 +9,7 @@ vi.mock('../services/tauri', () => ({
   getReportForAttempt: vi.fn(),
   getReportsForProblem: vi.fn(),
   deleteAttempt: vi.fn(),
-  getAttemptSteps: vi.fn(),
+  getAttemptSteps: vi.fn().mockResolvedValue([]),
   getObligationGraph: vi.fn(),
 }));
 
@@ -54,6 +54,8 @@ describe('workspaceStore', () => {
         assigned_model: 'solver-a',
         steps_spent: 2,
         max_steps: 5,
+        tally_yes: 0,
+        tally_total: 0,
       },
     ]);
   });
