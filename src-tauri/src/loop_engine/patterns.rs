@@ -1,5 +1,98 @@
 use serde::Deserialize;
 
+/// Hierarchical technique taxonomy for cross-family exploration.
+/// When the audit recommends branching, it targets an unexplored family
+/// to prevent "locally diverse but globally narrow" solving.
+pub static TECHNIQUE_TAXONOMY: &[(&str, &[&str])] = &[
+    (
+        "algebraic",
+        &[
+            "factoring",
+            "substitution",
+            "completing_square",
+            "polynomial_division",
+            "vieta",
+            "symmetric_functions",
+        ],
+    ),
+    (
+        "analytic",
+        &[
+            "epsilon_delta",
+            "squeeze",
+            "series_expansion",
+            "continuity_argument",
+            "mean_value",
+        ],
+    ),
+    (
+        "combinatorial",
+        &[
+            "pigeonhole",
+            "double_counting",
+            "inclusion_exclusion",
+            "generating_functions",
+            "bijection",
+        ],
+    ),
+    (
+        "number_theoretic",
+        &[
+            "modular_arithmetic",
+            "euclidean_algorithm",
+            "prime_factorization",
+            "diophantine",
+            "lifting_the_exponent",
+            "order_arithmetic",
+        ],
+    ),
+    (
+        "logical",
+        &[
+            "contradiction",
+            "contrapositive",
+            "strong_induction",
+            "well_ordering",
+            "case_analysis",
+        ],
+    ),
+    (
+        "geometric",
+        &[
+            "coordinate",
+            "synthetic",
+            "transformation",
+            "metric_space",
+            "convexity",
+        ],
+    ),
+];
+
+/// Build a formatted taxonomy string for injection into prompts.
+pub fn format_taxonomy() -> String {
+    let mut out = String::from("TECHNIQUE FAMILIES:\n");
+    for (family, techniques) in TECHNIQUE_TAXONOMY {
+        out.push_str(&format!("  {}: {}\n", family, techniques.join(", ")));
+    }
+    out
+}
+
+/// Given a technique name, find its parent family.
+pub fn classify_technique(technique: &str) -> Option<&'static str> {
+    let t = technique.to_lowercase();
+    for (family, techniques) in TECHNIQUE_TAXONOMY {
+        if *family == t {
+            return Some(family);
+        }
+        for tech in *techniques {
+            if *tech == t || t.contains(tech) {
+                return Some(family);
+            }
+        }
+    }
+    None
+}
+
 /// A pattern extracted from a verified proof chain.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExtractedPattern {
