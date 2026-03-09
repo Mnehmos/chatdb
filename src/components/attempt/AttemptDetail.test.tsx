@@ -129,6 +129,7 @@ describe('AttemptDetail', () => {
       loadDbSteps: vi.fn(),
       dbObligations: [],
       loadDbObligations: vi.fn(),
+      attempts: [],
     };
     navigationStoreState = {
       goToStep: vi.fn(),
