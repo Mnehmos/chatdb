@@ -48,7 +48,7 @@ hotfix/<issue#>-<description>     # hotfix/99-db-migration-crash
 
 ### Current State
 
-> **Note:** `develop` has not been created yet. Until it exists, `feature/*` and `fix/*` branches use the current default branch as base.
+> Default branch is `main`. `develop` has not been created yet — `feature/*` and `fix/*` branches use `main` as base until `develop` is bootstrapped.
 
 ## TDD Enforcement — Red → Green → Blue
 
