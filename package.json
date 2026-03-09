@@ -1,0 +1,44 @@
+{
+  "name": "chatdb",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "sidecar:dev": "cd sidecar && python -m uvicorn src.main:app --reload --port 9743",
+    "contracts:generate": "node scripts/generate-loop-event-contracts.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --config vitest.config.mjs",
+    "test:run": "vitest --config vitest.config.mjs --run",
+    "tdd:red": "node scripts/tdd-phase.mjs red",
+    "tdd:green": "node scripts/tdd-phase.mjs green",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "immer": "^10.0.0",
+    "katex": "^0.16.9",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^9.0.0",
+    "jsdom": "^28.1.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^6.0.0",
+    "vitest": "^2.0.0"
+  }
+}
