@@ -13,18 +13,56 @@ When the task is phase-specific, also load the matching repo-root prompt file:
 - `BLUE_REVIEW_PROMPT.md` for findings-first review, bug hunting, and behavior-preserving refactor work
 - `RED_GREEN_RUNBOOK.md` for operational Red/Green commands and target examples
 
-## Repository Workflow Enforcement
+## Repository Workflow Enforcement — Gitflow
 
-This repository uses Gitflow with strict TDD phase ordering for all implementation work.
+This repository uses **strict Gitflow** with mandatory TDD phase gates for all code changes.
 
-- Long-lived branches: `main` (release-ready) and `develop` (integration).
-- Working branches:
-  - `feature/*` branch from `develop` and merge back to `develop` via PR.
-  - `release/*` branch from `develop` and merge to both `main` and `develop`.
-  - `hotfix/*` branch from `main` and merge to both `main` and `develop`.
-- Mandatory implementation flow is **Red → Green → Blue** and cannot be reordered.
+### Branch Model
 
-## TDD Enforcement Prompt Tag
+| Branch | Purpose | Branches from | Merges to |
+|--------|---------|---------------|-----------|
+| `main` | Release-ready, tagged history | — | — |
+| `develop` | Integration branch | `main` (initial) | — |
+| `feature/*` | New functionality | `develop` | `develop` via PR |
+| `fix/*` | Bug fixes (non-hotfix) | `develop` or current default | current default via PR |
+| `release/*` | Release prep | `develop` | `main` + back-merge `develop` |
+| `hotfix/*` | Production emergency | `main` | `main` + `develop` |
+
+### Branch Naming
+
+```
+feature/<issue#>-<short-kebab>    # feature/12-obligation-parser
+fix/<issue#>-<short-description>  # fix/1-workspace-store-mock
+release/<semver>                  # release/0.2.0
+hotfix/<issue#>-<description>     # hotfix/99-db-migration-crash
+```
+
+### Workflow
+
+1. Create a GitHub issue describing the work
+2. Branch from the appropriate base (see table above)
+3. Complete Red → Green → Blue cycle (see below)
+4. Push branch, create PR referencing the issue (`Closes #N`)
+5. Merge via PR (merge commit, not squash — preserves TDD history)
+6. Delete the feature branch after merge
+
+### Current State
+
+> **Note:** `develop` has not been created yet. Until it exists, `feature/*` and `fix/*` branches use the current default branch as base.
+
+## TDD Enforcement — Red → Green → Blue
+
+All implementation work **must** follow the strict phase ordering. This is non-negotiable.
+
+### Phase Rules
+
+| Phase | What happens | Deliverable | Gate |
+|-------|-------------|-------------|------|
+| **Red** | Write failing tests that define the desired behavior | Test file(s) that fail with clear assertion errors | Tests must fail for the right reason |
+| **Green** | Minimal production code to make tests pass | Smallest correct change | All targeted tests pass |
+| **Blue** | Refactor, clean up, improve — only after green | Behavior-preserving improvements | All tests still pass |
+
+### Enforcement
 
 ```text
 No implementation before failing tests (Red)
@@ -33,15 +71,38 @@ Refactor only after green tests (Blue)
 PRs without Red evidence are non-compliant
 ```
 
-## Phase Prompt Usage
+### Commit Convention per Phase
 
-- For Red work, stop at failing tests and provide explicit Red evidence.
-- For Green work, make the smallest correct production change and verify the targeted scope.
-- For Blue work, establish the real green baseline first, distinguish environment blockers from code defects, and present findings before summaries.
-- Do not claim a repo-wide Blue phase unless the meaningful quality gates are green or the blockers are explicitly documented.
-- Preferred Red/Green entry points:
-  - `npm run tdd:red -- <stack> <target>`
-  - `npm run tdd:green -- <stack> <target>`
+```
+test(scope): describe failing test       # Red phase commit
+feat(scope): implement to pass tests     # Green phase commit
+refactor(scope): clean up after green    # Blue phase commit
+fix(scope): correct broken behavior      # Bug fix (has its own Red→Green)
+```
+
+### Phase Prompt Files
+
+Load the matching prompt file for phase-specific work:
+
+- `RED_PHASE_PROMPT.md` — failing-test design, Red evidence format
+- `GREEN_PHASE_PROMPT.md` — minimal implementation to satisfy Red tests
+- `BLUE_REVIEW_PROMPT.md` — findings-first review, bug hunting, behavior-preserving refactor
+- `RED_GREEN_RUNBOOK.md` — operational commands and target examples
+
+### Phase Entry Points
+
+```bash
+npm run tdd:red -- <stack> <target>     # Start Red phase
+npm run tdd:green -- <stack> <target>   # Start Green phase
+npm run test:run                        # Verify all tests
+npm run typecheck                       # Verify types
+```
+
+### Phase-Specific Guidance
+
+- **Red:** Stop at failing tests. Provide explicit Red evidence (test output showing failures). Do not write production code.
+- **Green:** Make the smallest correct production change. Verify only the targeted scope passes.
+- **Blue:** Establish the real green baseline first. Distinguish environment blockers from code defects. Present findings before summaries. Do not claim repo-wide Blue unless quality gates are green or blockers are documented.
 
 ## Current Target: Sprint 1 — Obligation Parsing Pipeline
 
