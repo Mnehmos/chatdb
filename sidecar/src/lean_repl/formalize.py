@@ -236,15 +236,40 @@ def _split_relation(formal: str) -> tuple[str, str, str] | None:
 
 
 def _goal_tactic_sequences(goal: str) -> list[str]:
-    if any(token in goal for token in ("<=", ">=", "<", ">")):
+    """Claim-type-aware tactic dispatch.
+
+    Maps the shape of the goal to Lean tactic families most likely to close it.
+    Order matters — more specific tactics first, generic fallbacks last.
+    """
+    goal_lower = goal.lower()
+
+    # Divisibility patterns (a ∣ b, dvd)
+    if "∣" in goal or "dvd" in goal_lower:
         return [
             "omega | norm_num | simp | decide",
             "norm_num | simp | decide",
+        ]
+
+    # Inequality / bound patterns
+    if any(token in goal for token in ("<=", ">=", "<", ">")):
+        return [
+            "linarith | nlinarith | omega | norm_num | positivity | simp | decide",
+            "omega | norm_num | simp | decide",
+            "nlinarith | positivity | simp | decide",
             "simp | decide",
         ]
+
+    # Congruence / mod patterns
+    if "%" in goal or "Mod" in goal or "≡" in goal:
+        return [
+            "omega | norm_num | decide",
+            "norm_num | simp | decide",
+        ]
+
+    # Default: equality / algebraic
     return [
         "ring | omega | norm_num | simp | decide",
-        "norm_num | simp | decide",
+        "norm_num | ring | simp | decide",
         "simp | decide",
     ]
 

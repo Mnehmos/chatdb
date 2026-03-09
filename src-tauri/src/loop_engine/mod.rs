@@ -980,6 +980,7 @@ impl LoopEngine {
             sticky_obligations: Vec::new(),
             fanin_focus_obligation_id: None,
             pending_proposals: Vec::new(),
+            steps_since_all_closed: 0,
         };
 
         while step_state.step_number < step_cfg.max_steps {

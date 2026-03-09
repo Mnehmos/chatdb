@@ -43,6 +43,10 @@ pub struct AuditResult {
     /// specific checks that gate the conclusion until resolved.
     #[serde(default)]
     pub obligations: Vec<ObligationProposal>,
+    /// Target technique family for branching (from TECHNIQUE_TAXONOMY).
+    /// Guides the solver to explore a specific unexplored family.
+    #[serde(default)]
+    pub branch_target_family: Option<String>,
 }
 
 /// Build the exploration audit prompt from the current proof state.
@@ -147,10 +151,18 @@ Only propose obligations that cover GENUINELY NEW ground not represented above.\
         ));
     }
 
+    // Technique taxonomy — the complete family tree for cross-family exploration
+    p.push_str(&super::patterns::format_taxonomy());
+    p.push('\n');
+
     // Technique registry — what approaches have been tried and their success rates
     if !techniques.is_empty() {
         p.push_str("TECHNIQUE REGISTRY (tracked approaches with success rates):\n");
+        // Classify each tried technique into its family for coverage analysis
         for t in techniques.iter().take(10) {
+            let family_tag = super::patterns::classify_technique(&t.technique_family)
+                .map(|f| format!(" [family: {}]", f))
+                .unwrap_or_default();
             let ratio = if t.success_count + t.failure_count > 0 {
                 format!(
                     " [{}/{}]",
@@ -161,8 +173,8 @@ Only propose obligations that cover GENUINELY NEW ground not represented above.\
                 String::new()
             };
             p.push_str(&format!(
-                "  - {}: {}{}\n",
-                t.technique_family, t.description, ratio
+                "  - {}: {}{}{}\n",
+                t.technique_family, t.description, ratio, family_tag
             ));
         }
         p.push('\n');
@@ -184,6 +196,7 @@ Analyze the exploration breadth and respond with ONLY a JSON object (no markdown
   \"current_trajectory\": \"one-sentence description of where the solver is heading\",\n\
   \"recommended_direction\": \"specific unexplored approach to try next — be concrete\",\n\
   \"should_branch\": true if there is a promising unexplored direction that could yield a DIFFERENT answer,\n\
+  \"branch_target_family\": \"one of the TECHNIQUE FAMILIES above that has NOT been explored yet (or null)\",\n\
   \"confidence_in_current_path\": 0.0-1.0,\n\
   \"obligations\": [\n\
     {\n\

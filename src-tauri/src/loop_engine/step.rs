@@ -449,9 +449,33 @@ pub(super) struct StepState {
     /// rest here. Subsequent `run_step` calls dequeue from this buffer instead
     /// of making a new LLM call.
     pub pending_proposals: Vec<LlmProposal>,
+    /// Counts verified steps since ALL obligations were last closed.
+    /// When > 0, solver prompt gets a "conclude now" signal.
+    /// At >= 3, the engine force-emits a conclusion.
+    pub steps_since_all_closed: u32,
 }
 
 // ── Step-only helpers ────────────────────────────────────────────────
+
+/// Append a "conclude now" signal to the solver prompt when all obligations
+/// are closed but the solver hasn't produced a conclusion yet.
+fn inject_budget_gate_signal(mut prompt: String, steps_since_all_closed: u32) -> String {
+    if steps_since_all_closed >= 2 {
+        prompt.push_str(
+            "\n\n=== URGENT: ALL OBLIGATIONS CLOSED ===\n\
+             All obligations are satisfied. You MUST produce a CONCLUSION step NOW.\n\
+             Set proposal_type to \"conclusion\" and summarize the final answer.\n\
+             Do NOT produce any more intermediate steps — conclude immediately.\n",
+        );
+    } else if steps_since_all_closed >= 1 {
+        prompt.push_str(
+            "\n\n=== ALL OBLIGATIONS CLOSED ===\n\
+             All obligations have been satisfied. You should produce a conclusion step.\n\
+             Set proposal_type to \"conclusion\" with the final answer.\n",
+        );
+    }
+    prompt
+}
 
 /// Check if a verified step contradicts the suspected answer.
 /// Returns Some(reason) if the step disproves the hypothesis, None otherwise.
@@ -2974,6 +2998,7 @@ async fn process_solver_result(
             .get_open_obligations(&config.attempt_id)
             .unwrap_or_default();
         if !open_obs.is_empty() {
+            state.steps_since_all_closed = 0; // reset — there are still open obligations
             handle_satisfaction_tally(
                 config,
                 state,
@@ -2989,7 +3014,156 @@ async fn process_solver_result(
             )
             .await;
         } else {
+            state.steps_since_all_closed += 1;
+            tracing::info!(
+                "All obligations closed — steps_since_all_closed = {}",
+                state.steps_since_all_closed
+            );
             state.orchestrator.record_closure_event(false);
+
+            if state.steps_since_all_closed >= 3 {
+                tracing::warn!(
+                    "Force-concluding: {} verified steps after all obligations closed",
+                    state.steps_since_all_closed
+                );
+                let chain = config
+                    .state
+                    .db
+                    .get_verified_chain(&config.attempt_id)
+                    .unwrap_or_default();
+                let final_text = chain
+                    .last()
+                    .map(|s| s.2.clone())
+                    .unwrap_or_else(|| "All obligations satisfied.".to_string());
+                let conclusion_natural =
+                    format!("CONCLUSION (auto): {}", final_text);
+
+                use crate::db::StepRecord;
+                let rec = StepRecord {
+                    attempt_id: &config.attempt_id,
+                    parent_step_id: verified.last().map(|(id, ..)| id.as_str()),
+                    step_number,
+                    model: &config.model_name,
+                    context_refs: None,
+                    goal_state: "budget_gate_force_conclude",
+                    context_provided: None,
+                    proposal_type: "conclusion",
+                    proposal_natural: &conclusion_natural,
+                    proposal_formal: None,
+                    proposal_reasoning: Some(
+                        "Auto-concluded: all obligations closed, budget gate triggered after 3 steps.",
+                    ),
+                    sympy_result: None,
+                    sympy_passed: None,
+                    pint_result: None,
+                    pint_passed: None,
+                    lean_result: None,
+                    lean_passed: None,
+                    verified: true,
+                    rejection_reason: None,
+                    model_tokens_in: None,
+                    model_tokens_out: None,
+                    wall_time_ms: None,
+                    challenge_model: None,
+                    challenge_flaw_found: None,
+                    challenge_attack: None,
+                    challenge_confidence: None,
+                    challenge_fatal: None,
+                    obligation_id: None,
+                    solver_round_id: None,
+                    solver_worker_id: None,
+                    solver_dispatch_mode: None,
+                    stale_sibling: false,
+                };
+                let cid = db_write_or_log(
+                    config.state.db.record_step(&rec),
+                    "record_step(budget_conclude)",
+                    app_handle,
+                    &config.attempt_id,
+                );
+                let parent_node_id =
+                    verified
+                        .last()
+                        .and_then(|(id, ..)| {
+                            config
+                                .state
+                                .db
+                                .get_node_by_step_id(id)
+                                .ok()
+                                .flatten()
+                                .map(|n| n.id)
+                        });
+                let _ = db_write_or_log(
+                    config.state.db.create_node(
+                        &config.attempt_id,
+                        state.current_branch_id,
+                        "closure",
+                        parent_node_id.as_deref(),
+                        &conclusion_natural,
+                        None,
+                        None,
+                        None,
+                        "verified",
+                        None,
+                        None,
+                        Some(&config.model_name),
+                        None,
+                        Some(&cid),
+                        None,
+                        step_number,
+                    ),
+                    "create_node(budget_conclude)",
+                    app_handle,
+                    &config.attempt_id,
+                );
+                let _ = config.state.db.append_dag_event(
+                    &config.attempt_id,
+                    "budget_gate_force_conclude",
+                    &serde_json::json!({
+                        "step_number": step_number,
+                        "steps_since_all_closed": state.steps_since_all_closed,
+                    })
+                    .to_string(),
+                    "loop_engine",
+                );
+                let _ = app_handle.emit(
+                    "loop:step_complete",
+                    StepEvent {
+                        attempt_id: config.attempt_id.clone(),
+                        step_number,
+                        proposal_type: "conclusion".to_string(),
+                        proposal_natural: conclusion_natural.clone(),
+                        proposal_formal: None,
+                        proposal_reasoning: Some("Budget gate auto-conclude".to_string()),
+                        verified: true,
+                        rejection_reason: None,
+                        model: config.model_name.clone(),
+                        sympy_passed: None,
+                        pint_passed: None,
+                        lean_passed: None,
+                        challenge_model: None,
+                        challenge_flaw_found: None,
+                        challenge_attack: None,
+                        challenge_confidence: None,
+                        challenge_fatal: None,
+                        obligation_id: None,
+                        obligation_desc: None,
+                        obligation_type: None,
+                        solver_round_id: None,
+                        solver_worker_id: None,
+                        solver_dispatch_mode: None,
+                        stale_sibling: None,
+                    },
+                );
+                let _ = config.state.db.close_branch(
+                    state.current_branch_id as i64,
+                    "completed",
+                    Some(&conclusion_natural),
+                    None,
+                );
+                state.proof_complete = true;
+                return Ok(StepOutcome::ProofComplete);
+            }
         }
     } else {
         // Rejected step
@@ -3542,6 +3716,7 @@ pub(super) async fn run_step(
             state.failures.len() as u32,
             state.suspected_answer.as_ref(),
         );
+        let prompt = inject_budget_gate_signal(prompt, state.steps_since_all_closed);
         let context_refs_json = if verified.is_empty() {
             None
         } else {
@@ -3821,6 +3996,7 @@ async fn run_parallel_distinct(
             &ob_scout_ctx,
             state.suspected_answer.as_ref(),
         );
+        let prompt = inject_budget_gate_signal(prompt, state.steps_since_all_closed);
         let context_refs_json = if verified.is_empty() {
             None
         } else {
@@ -4135,6 +4311,7 @@ async fn run_parallel_fanin(
         ob_scout_ctx,
         state.suspected_answer.as_ref(),
     );
+    let prompt = inject_budget_gate_signal(prompt, state.steps_since_all_closed);
     let context_refs_json = if verified.is_empty() {
         None
     } else {

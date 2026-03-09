@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatDB - Autonomous Proof Engine</title>
+  <meta name="description" content="ChatDB generates verified mathematical training data through obligation-driven proof search with CAS validation and Lean 4 kernel verification.">
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface2: #1a2332;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --accent: #3b82f6;
+      --accent2: #8b5cf6;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --cyan: #06b6d4;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+      background: var(--surface);
+    }
+    .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      max-width: 640px;
+      font-size: 1.2rem;
+      color: var(--text-dim);
+      margin-bottom: 2.5rem;
+    }
+    .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { transform: translateY(-1px); text-decoration: none; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 3rem 2rem;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat { text-align: center; }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+    /* Sections */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+    .section-desc {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      max-width: 700px;
+      margin-bottom: 3rem;
+    }
+
+    /* Architecture diagram */
+    .arch-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 3rem;
+    }
+    .arch-layer {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      background: var(--surface);
+      padding: 1.5rem;
+      gap: 1rem;
+      align-items: center;
+    }
+    .arch-layer-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .arch-layer-name .lang {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      text-transform: none;
+      letter-spacing: 0;
+      margin-top: 0.2rem;
+    }
+    .arch-layer-detail { color: var(--text-dim); font-size: 0.95rem; }
+    .arch-layer:nth-child(1) .arch-layer-name { color: var(--cyan); }
+    .arch-layer:nth-child(2) .arch-layer-name { color: var(--accent); }
+    .arch-layer:nth-child(3) .arch-layer-name { color: var(--accent2); }
+    .arch-layer:nth-child(4) .arch-layer-name { color: var(--green); }
+
+    /* Cards grid */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .card p { font-size: 0.9rem; color: var(--text-dim); }
+
+    /* Training data layers table */
+    .layers-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .layers-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .layers-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .layers-table tr:hover td { background: var(--surface2); }
+    .layer-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .l1 { background: rgba(16,185,129,0.15); color: var(--green); }
+    .l2 { background: rgba(6,182,212,0.15); color: var(--cyan); }
+    .l3 { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .l4 { background: rgba(139,92,246,0.15); color: var(--accent2); }
+    .l5 { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .l6 { background: rgba(239,68,68,0.15); color: var(--red); }
+    .l7 { background: rgba(16,185,129,0.15); color: var(--green); }
+
+    /* Irreducibilities */
+    .irreducibilities {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+    .irred {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      border-top: 3px solid;
+    }
+    .irred:nth-child(1) { border-top-color: var(--accent); }
+    .irred:nth-child(2) { border-top-color: var(--accent2); }
+    .irred:nth-child(3) { border-top-color: var(--cyan); }
+    .irred:nth-child(4) { border-top-color: var(--amber); }
+    .irred h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .irred .theorem { font-size: 0.8rem; color: var(--text-dim); font-style: italic; margin-bottom: 0.75rem; }
+    .irred .response { font-size: 0.85rem; color: var(--text-dim); }
+
+    /* Code block */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+    .code-comment { color: #64748b; }
+    .code-keyword { color: var(--accent2); }
+    .code-string { color: var(--green); }
+    .code-type { color: var(--cyan); }
+
+    /* Roadmap */
+    .roadmap { position: relative; padding-left: 2rem; }
+    .roadmap::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .roadmap-item { position: relative; margin-bottom: 2rem; }
+    .roadmap-dot {
+      position: absolute;
+      left: -2rem;
+      top: 0.35rem;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 3px solid;
+    }
+    .roadmap-item.done .roadmap-dot { border-color: var(--green); background: var(--green); }
+    .roadmap-item.active .roadmap-dot { border-color: var(--accent); background: var(--accent); animation: pulse 2s infinite; }
+    .roadmap-item.future .roadmap-dot { border-color: var(--border); background: transparent; }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); } 50% { box-shadow: 0 0 0 6px rgba(59,130,246,0); } }
+    .roadmap-item h3 { font-size: 1rem; font-weight: 700; }
+    .roadmap-item .sprint { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.25rem; }
+    .roadmap-item p { font-size: 0.9rem; color: var(--text-dim); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--text-dim); }
+    footer a:hover { color: var(--text); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .stats-bar { gap: 1.5rem; }
+      .arch-layer { grid-template-columns: 1fr; }
+      .hero-actions { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>
+    Active Development &middot; Sprint 1
+  </div>
+  <h1>
+    <span class="gradient">ChatDB</span><br>
+    Autonomous Proof Engine
+  </h1>
+  <p>
+    Generates seven layers of verified mathematical training data through
+    obligation-driven proof search, CAS validation, and Lean&nbsp;4 kernel verification.
+  </p>
+  <div class="hero-actions">
+    <a href="https://github.com/Mnehmos/chatdb" class="btn btn-primary">View on GitHub</a>
+    <a href="#architecture" class="btn btn-secondary">How It Works</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-value">45,900+</div>
+    <div class="stat-label">Lines of Code</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">17</div>
+    <div class="stat-label">Database Tables</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">58</div>
+    <div class="stat-label">Tauri Commands</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">7</div>
+    <div class="stat-label">Training Layers</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">3</div>
+    <div class="stat-label">Validator Engines</div>
+  </div>
+</div>
+
+<!-- Architecture -->
+<section id="architecture">
+  <div class="section-label">Architecture</div>
+  <div class="section-title">Three-Substrate Stack</div>
+  <div class="section-desc">
+    Rust orchestrates the hot path. Python validates with CAS and Lean&nbsp;4.
+    React observes. SQLite is the single source of truth.
+  </div>
+
+  <div class="arch-stack">
+    <div class="arch-layer">
+      <div class="arch-layer-name">Frontend<span class="lang">React + TypeScript</span></div>
+      <div class="arch-layer-detail">57 components &middot; Zustand stores &middot; Tauri event listeners &middot; DAG visualization, obligation lanes, proof tree, token streaming &middot; <em>Observes. Never mutates.</em></div>
+    </div>
+    <div class="arch-layer">
+      <div class="arch-layer-name">Backend<span class="lang">Rust + Tauri 2</span></div>
+      <div class="arch-layer-detail">Loop engine with solver, critic, auditor, reviewer &middot; Multi-model orchestrator (Anthropic, OpenAI, OpenRouter) &middot; Obligation queue with satisfaction tally &middot; Worker pool with parallel fan-in</div>
+    </div>
+    <div class="arch-layer">
+      <div class="arch-layer-name">Sidecar<span class="lang">Python + FastAPI</span></div>
+      <div class="arch-layer-detail">SymPy algebraic validator &middot; Pint dimensional validator &middot; Lean&nbsp;4 persistent REPL with Mathlib &middot; Multi-agent council, scout, librarian, adversary &middot; MCP server for Claude Desktop</div>
+    </div>
+    <div class="arch-layer">
+      <div class="arch-layer-name">Database<span class="lang">SQLite + WAL</span></div>
+      <div class="arch-layer-detail">17 tables &middot; Event-sourced DAG &middot; Obligation lifecycle (open &rarr; assigned &rarr; closed/demoted) &middot; Full training data provenance &middot; <em>The database is the memory.</em></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="code-comment">// The core loop: solve &rarr; validate &rarr; record &rarr; audit &rarr; repeat</span>
+<span class="code-keyword">while</span> step_number < max_steps {
+    <span class="code-keyword">let</span> obligation = obligation_queue.<span class="code-type">select_next</span>(&attempt_id);
+    <span class="code-keyword">let</span> proposal  = solver.<span class="code-type">call</span>(&prompt, &obligation).await;
+    <span class="code-keyword">let</span> result    = sidecar.<span class="code-type">validate_step</span>(&proposal).await;
+
+    <span class="code-keyword">if</span> result.verified {
+        db.<span class="code-type">record_step</span>(&step);           <span class="code-comment">// steps table</span>
+        db.<span class="code-type">create_node</span>(&proof_node);     <span class="code-comment">// DAG dual-write</span>
+        satisfaction_tally(&obligation);   <span class="code-comment">// 4-voter quorum</span>
+    }
+
+    <span class="code-keyword">if</span> all_obligations_closed &amp;&amp; budget_gate >= <span class="code-string">3</span> {
+        force_conclude();                 <span class="code-comment">// anti-redundancy gate</span>
+    }
+}
+  </div>
+</section>
+
+<!-- Core Innovation -->
+<section>
+  <div class="section-label">Core Innovation</div>
+  <div class="section-title">Separation of Storage from Attention</div>
+  <div class="section-desc">
+    The DAG persists everything. Agents are stateless functions.
+    The orchestration layer decides what each agent sees.
+    Context is curated, not accumulated.
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">&#x1f4be;</div>
+      <h3>Database Is Memory</h3>
+      <p>Every step, decision, and verdict recorded in SQLite. No ephemeral in-memory state. Full audit trail from problem to proof to training data.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x1f441;</div>
+      <h3>Curated Context</h3>
+      <p>Each agent call receives only the relevant slice of the DAG. No context window bloat. Fresh perspective on every branch.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x2696;</div>
+      <h3>Obligation-Driven Search</h3>
+      <p>Proof can't conclude until all obligations close. Four-voter satisfaction tally (mechanical, solver, reviewer, adversary) with quorum gating.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x1f6e1;</div>
+      <h3>Three-Level Verification</h3>
+      <p>Syntactic checks &rarr; CAS validation (SymPy/Pint) &rarr; Lean 4 kernel verification. Effort matches obligation criticality.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x1f916;</div>
+      <h3>Multi-Model Orchestra</h3>
+      <p>Solver, reviewer, adversary on independent models. Council deliberation after failed attempts. Orchestrator routes by capability.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x1f4ca;</div>
+      <h3>Budget-Aware</h3>
+      <p>Token accounting per attempt. Anti-redundancy budget gate forces conclusion after all obligations satisfied. Plateau detector triggers branching.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Four Irreducibilities -->
+<section>
+  <div class="section-label">Design Philosophy</div>
+  <div class="section-title">The Four Irreducibilities</div>
+  <div class="section-desc">
+    Proven impossibility theorems that shape every architectural decision.
+    You can't engineer around physics &mdash; but you can build systems that respect the bounds.
+  </div>
+
+  <div class="irreducibilities">
+    <div class="irred">
+      <h3>Obligation Opacity</h3>
+      <div class="theorem">Complete obligations can't be enumerated before exploration (Cut-elimination blowup, Rice's theorem)</div>
+      <div class="response"><strong>Response:</strong> Three-layer obligation parsing. Obligations mutable at every DAG node. Completeness invariant gates termination.</div>
+    </div>
+    <div class="irred">
+      <h3>Solver Opacity</h3>
+      <div class="theorem">Verification of outputs doesn't predict process (77% of reasoning tokens are causally decorative)</div>
+      <div class="response"><strong>Response:</strong> Never trust process; verify only outputs. Separate solver from verifier. Stateless agent calls.</div>
+    </div>
+    <div class="irred">
+      <h3>V-E Tradeoff</h3>
+      <div class="theorem">Verification depth and exploration breadth trade off on concave Pareto frontier</div>
+      <div class="response"><strong>Response:</strong> Make allocation visible and auditable. Syntactic &rarr; CAS &rarr; Lean formalization, chosen per obligation.</div>
+    </div>
+    <div class="irred">
+      <h3>Strategy Interference</h3>
+      <div class="theorem">Pursuing one proof path forecloses alternatives (switching cost regret bounds)</div>
+      <div class="response"><strong>Response:</strong> Fresh context for new branches. Plateau detector triggers mode transition. Technique taxonomy prevents tunnel vision.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Training Data -->
+<section>
+  <div class="section-label">Output</div>
+  <div class="section-title">Seven Training Data Layers</div>
+  <div class="section-desc">
+    Every agent produces mechanically verified, structured training data.
+    Not just the proof &mdash; the entire search trajectory, deliberation, and meta-reasoning.
+  </div>
+
+  <table class="layers-table">
+    <thead>
+      <tr><th>Layer</th><th>Source</th><th>Signal</th><th>What Makes It Unique</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="layer-num l1">1</span></td>
+        <td>Solvers</td>
+        <td>Step-level PRM (goal &rarr; proposal &rarr; verdict)</td>
+        <td>Verified in real-time by CAS + Lean</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l2">2</span></td>
+        <td>Solvers</td>
+        <td>Full attempt trees with backtracks</td>
+        <td>Complete search trajectories, not just solutions</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l3">3</span></td>
+        <td>Orchestrator</td>
+        <td>Routing decisions, worker states</td>
+        <td>Multi-agent coordination traces</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l4">4</span></td>
+        <td>Council</td>
+        <td>Deliberation, consensus, dissent</td>
+        <td>Metacognitive reasoning about reasoning</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l5">5</span></td>
+        <td>Scout</td>
+        <td>Research gap &rarr; query &rarr; result &rarr; impact</td>
+        <td>When-to-research decision signal</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l6">6</span></td>
+        <td>Critic</td>
+        <td>Prediction vs actual outcome</td>
+        <td>Evaluation calibration data</td>
+      </tr>
+      <tr>
+        <td><span class="layer-num l7">7</span></td>
+        <td>Librarian</td>
+        <td>Curation decisions, downstream impact</td>
+        <td>Knowledge management traces</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Roadmap -->
+<section>
+  <div class="section-label">Roadmap</div>
+  <div class="section-title">From First Proof to Full Pipeline</div>
+
+  <div class="roadmap">
+    <div class="roadmap-item done">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Milestone 1 &mdash; Complete</div>
+      <h3>First Verified Proof</h3>
+      <p>Linear step chain with CAS validation, event streaming, dual-write to proof nodes. 19 steps, 44.7K tokens, 100% mechanical validation.</p>
+    </div>
+    <div class="roadmap-item done">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Milestone 2 &mdash; Complete</div>
+      <h3>Pattern Extraction</h3>
+      <p>Technique library from solved proofs. Success/failure tracking per pattern. Injection into solver prompts.</p>
+    </div>
+    <div class="roadmap-item active">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Sprint 1 &mdash; In Progress</div>
+      <h3>Obligation Parsing Pipeline</h3>
+      <p>Three-layer obligation detection. Pre-solve intelligence briefing. Merge pipeline with dedup and confidence scoring. Anti-redundancy budget gate. Technique family taxonomy.</p>
+    </div>
+    <div class="roadmap-item future">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Sprint 2</div>
+      <h3>Obligation Engine + Completeness Invariant</h3>
+      <p>Obligations drive the loop. Completeness invariant gates termination. Full DAG branching.</p>
+    </div>
+    <div class="roadmap-item future">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Sprint 3</div>
+      <h3>Multi-Model + Adversary + Librarian</h3>
+      <p>Parallel agent orchestra. Escalation ladder. Pattern curation and coverage monitoring.</p>
+    </div>
+    <div class="roadmap-item future">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Sprint 4</div>
+      <h3>Registry Learning + Safety</h3>
+      <p>Self-modification tracking. Death spiral detection. Technique taxonomy with success rate learning.</p>
+    </div>
+    <div class="roadmap-item future">
+      <div class="roadmap-dot"></div>
+      <div class="sprint">Sprint 5</div>
+      <h3>API + Formalization + Polish</h3>
+      <p>HTTP API for external consumers. Full Lean 4 formalization pipeline. MCP server for Claude integration.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Tech Stack -->
+<section>
+  <div class="section-label">Stack</div>
+  <div class="section-title">Built With</div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Rust + Tauri 2</h3>
+      <p>Backend orchestration, async loop engine, SQLite bindings, LLM client with streaming + thinking support.</p>
+    </div>
+    <div class="card">
+      <h3>React + TypeScript</h3>
+      <p>Zustand state management, Tauri IPC event listeners, DAG visualization, proof tree rendering.</p>
+    </div>
+    <div class="card">
+      <h3>Python + FastAPI</h3>
+      <p>SymPy and Pint validators, multi-agent sidecar, MCP server, Lean REPL management.</p>
+    </div>
+    <div class="card">
+      <h3>Lean 4 + Mathlib</h3>
+      <p>Persistent REPL with warm Mathlib environment. Kernel verification in &lt;1s after warmup. Claim-type-aware tactic dispatch.</p>
+    </div>
+    <div class="card">
+      <h3>SQLite + WAL</h3>
+      <p>17-table schema. Event-sourced DAG. Full training data provenance. Schema-as-architecture philosophy.</p>
+    </div>
+    <div class="card">
+      <h3>Multi-LLM Support</h3>
+      <p>Anthropic (with thinking), OpenAI (with reasoning), OpenRouter. Independent solver, reviewer, and adversary models.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    ChatDB &middot; Vario Automation &middot;
+    <a href="https://github.com/Mnehmos/chatdb">GitHub</a>
+  </p>
+</footer>
+
+</body>
+</html>

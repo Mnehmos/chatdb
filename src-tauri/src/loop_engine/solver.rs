@@ -402,6 +402,14 @@ TOOLS AVAILABLE — call these before submitting your step:\n\
             a.techniques_missing.join(", "),
             a.recommended_direction,
         ));
+        if let Some(ref family) = a.branch_target_family {
+            p.push_str(&format!(
+                "TARGET FAMILY FOR NEXT STEP: {}\n\
+                 The audit identified '{}' as an unexplored technique family.\n\
+                 Your next step SHOULD use a technique from this family.\n\n",
+                family, family,
+            ));
+        }
     }
 
     // Verified chain — curated to remove tautological noise
