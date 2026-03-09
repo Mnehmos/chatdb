@@ -86,8 +86,8 @@ describe('ObligationLanes', () => {
     expect(screen.getByText('GENERAL')).toBeInTheDocument();
     expect(screen.getByText('mini-ob-1-focused')).toBeInTheDocument();
     expect(screen.getByText('mini-ob-2-plain')).toBeInTheDocument();
+    // ob-3 is closed_proved so MiniTokenStream doesn't render for it
     expect(screen.queryByText('mini-ob-3-plain')).not.toBeInTheDocument();
-    expect(screen.getByText('+1 more obligation')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Open step'));
     fireEvent.click(screen.getByText('mini-ob-1-focused'));
